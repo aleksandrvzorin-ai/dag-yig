@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dictionary</title>
+<style>
+:root{color-scheme:light dark;--blue:#1f4e78;--line:#d9e2f3;--bg:#fff;--fg:#17202a;--muted:#5f6b76}
+@media(prefers-color-scheme:dark){:root{--bg:#111827;--fg:#f3f4f6;--muted:#b6c0cc;--line:#334155}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}.app{max-width:1160px;margin:24px auto;padding:0 16px}h1{margin:0;color:#3b82b8}.hint{color:var(--muted);margin:.4rem 0 1rem}.toolbar{display:flex;gap:.65rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem}.search{flex:1 1 280px;min-width:220px;padding:.72rem .85rem;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit}.search:focus{outline:3px solid #7dd3fc;outline-offset:2px}.picker{display:inline-block;background:var(--blue);color:#fff;padding:.7rem 1rem;border-radius:8px;font-weight:700;cursor:pointer}.picker:focus-within{outline:3px solid #7dd3fc;outline-offset:2px}input[type=file]{position:absolute;inline-size:1px;block-size:1px;opacity:0}.status{min-height:1.5rem;color:var(--muted)}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:10px}table{width:100%;border-collapse:collapse;min-width:720px}th{background:var(--blue);color:#fff;text-align:left;padding:.75rem;position:sticky;top:0}td{padding:.6rem .75rem;border-bottom:1px solid var(--line);vertical-align:top}.pic{width:120px;height:78px;object-fit:cover;border-radius:7px;background:#e5e7eb;cursor:zoom-in}.pic:focus{outline:3px solid #7dd3fc;outline-offset:2px}.viewer{padding:0;border:0;border-radius:12px;background:transparent;max-width:min(94vw,1200px);max-height:94vh}.viewer::backdrop{background:rgba(0,0,0,.82)}.viewer-box{position:relative;display:grid;place-items:center}.viewer img{display:block;max-width:92vw;max-height:90vh;object-fit:contain;border-radius:10px}.viewer-close{position:absolute;top:10px;right:10px;width:42px;height:42px;border:0;border-radius:999px;background:rgba(0,0,0,.72);color:#fff;font-size:28px;line-height:1;cursor:pointer}.viewer-close:focus{outline:3px solid #7dd3fc;outline-offset:2px}audio{width:230px;max-width:100%}.empty{padding:1.2rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<main class="app">
+<h1>Dictionary</h1>
+<p class="hint">The word list is built into the page. Search by lemma or gloss. Select a picture to enlarge it.</p>
+<div class="toolbar">
+<input id="search" class="search" type="search" placeholder="Search by lemma or gloss…" aria-label="Search the dictionary">
+</div>
+<div id="status" class="status" aria-live="polite">Loading dictionary…</div>
+<div class="table-wrap">
+<table><thead><tr><th>Lemma</th><th>Gloss</th><th>Picture</th><th>Audio</th></tr></thead><tbody id="rows"><tr><td colspan="4" class="empty">The dictionary is loading…</td></tr></tbody></table>
+</div>
+</main>
+<dialog id="viewer" class="viewer" aria-label="Image viewer"><div class="viewer-box"><button id="viewer-close" class="viewer-close" type="button" aria-label="Close">×</button><img id="viewer-image" alt=""></div></dialog>
+<script>
+(()=>{const rows=document.getElementById('rows'),status=document.getElementById('status'),viewer=document.getElementById('viewer'),viewerImage=document.getElementById('viewer-image'),viewerClose=document.getElementById('viewer-close'),search=document.getElementById('search');let allData=[];
+const githubBase='https://raw.githubusercontent.com/aleksandrvzorin-ai/dag-yig/main/';
+const mediaUrl=(v,folder)=>{let s=String(v??'').trim().replaceAll('\\','/');if(!s)return '';if(/^https?:\/\//i.test(s))return s;s=s.replace(/^\.\//,'');if(s.startsWith(folder+'/'))s=s.slice(folder.length+1);if(s.includes('/'))s=s.split('/').pop();return encodeURI(githubBase+folder+'/'+s);};
+function cell(text){const td=document.createElement('td');td.textContent=String(text??'');return td}
+function render(data=allData){allData=data;const q=search.value.trim().toLocaleLowerCase();rows.replaceChildren();let count=0;for(const item of data){const lemma=item.Lemma??'',gloss=item.Gloss??'',picture=item.Picture??'',audio=item.Audio??'';if(q&&!`${lemma} ${gloss}`.toLocaleLowerCase().includes(q))continue;if(![lemma,gloss,picture,audio].some(v=>String(v).trim()))continue;const tr=document.createElement('tr');tr.append(cell(lemma),cell(gloss));const ptd=document.createElement('td'),p=mediaUrl(picture,'images');if(p){const img=document.createElement('img');img.className='pic';img.alt=String(lemma||'Illustration');img.src=p;img.tabIndex=0;img.title='Select to enlarge';const openViewer=()=>{viewerImage.src=img.src;viewerImage.alt=img.alt;viewer.showModal()};img.addEventListener('click',openViewer);img.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openViewer()}});ptd.append(img)}else ptd.textContent=picture?String(picture):'';const atd=document.createElement('td'),a=mediaUrl(audio,'audio');if(a){const player=document.createElement('audio');player.controls=true;player.preload='none';player.src=a;atd.append(player)}else atd.textContent=audio?String(audio):'';tr.append(ptd,atd);rows.append(tr);count++}if(!count){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=4;td.className='empty';td.textContent=q?'No matching entries.':'There are no entries in the dictionary.';tr.append(td);rows.append(tr)}status.textContent=q?`Entries found: ${count}.`:`Entries loaded: ${count}.`;}
+viewerClose.addEventListener('click',()=>viewer.close());viewer.addEventListener('click',e=>{if(e.target===viewer)viewer.close()});viewer.addEventListener('close',()=>{viewerImage.removeAttribute('src')});
+const embeddedData=[{"Lemma": "сhang", "Gloss": "wine", "Picture": "chang.jpg", "Audio": "chang.mp3"}, {"Lemma": "ja", "Gloss": "tea", "Picture": "ja.jpg", "Audio": "ja.mp3"}, {"Lemma": "pha ma", "Gloss": "parents", "Picture": "pha ma.jpg", "Audio": "pha_ma.mp3"}, {"Lemma": "tsha tsha", "Gloss": "tsatsa (votive plaque)", "Picture": "tsha tsha.jpg", "Audio": "tsha tsha.mp3"}];
+search.addEventListener('input',()=>render());
+render(embeddedData);
+})();
+</script>
+</body>
+</html>
